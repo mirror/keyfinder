@@ -7,14 +7,27 @@ namespace PIDConvert
 {
 	class Program
 	{
+		static List<Key> keys = new List<Key>();
+
 		static void Main(string[] args)
 		{
 			// More details here: http://www.licenturion.com/xp/fully-licensed-wpa.txt
 
-			byte[] binaryKey = GetDigitalProductID();
+			// keys to read
+			keys.Add(new Key(@"SOFTWARE\Microsoft\Microsoft SQL Server\100\DTS\Setup", "DigitalProductID", 52));
+			keys.Add(new Key(@"SOFTWARE\Microsoft\Microsoft SQL Server\100\Tools\Setup", "DigitalProductID", 52));
+			keys.Add(new Key(@"SOFTWARE\Microsoft\Microsoft SQL Server\110\DTS\Setup", "DigitalProductID", 0));
+			keys.Add(new Key(@"SOFTWARE\Microsoft\Microsoft SQL Server\110\Tools\Setup", "DigitalProductID", 0));
+
+			for (int i = 0; i < keys.Count; i++)
+				PrintKey(i);
+		}
+
+		static void PrintKey(int key) {
+			byte[] binaryKey = GetDigitalProductID(key);
 			if (binaryKey == null)
 			{
-				Console.WriteLine("Unable to retrieve DigitalProductID registry value");
+				Console.WriteLine("Unable to read {0}/{1}", keys[key].key, keys[key].value);
 				return;
 			}
 
@@ -41,19 +54,20 @@ namespace PIDConvert
 				sb.Append(decodedKey[i]);
 			}
 
-			Console.WriteLine(sb.ToString());
+			Console.WriteLine(@"{0} {1}\{2}", sb.ToString(), keys[key].key, keys[key].value);
 		}
 
-		static byte[] GetDigitalProductID()
+		static byte[] GetDigitalProductID(int k)
 		{
 			byte[] productID = null;
+			Key pk = keys[k];
 
-			RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Microsoft SQL Server\100\DTS\Setup");
+			RegistryKey key = Registry.LocalMachine.OpenSubKey(pk.key);
 			if (key != null)
 			{
-				byte[] data = (byte[]) key.GetValue("DigitalProductID");
+				byte[] data = (byte[]) key.GetValue(pk.value);
 
-				int dataOffset = 52;
+				int dataOffset = pk.offset;
 				int dataLen = 15;
 				if (data != null && data.Length >= dataOffset + dataLen)
 				{
@@ -65,6 +79,17 @@ namespace PIDConvert
 			}
 
 			return productID;
+		}
+	}
+
+	public struct Key {
+		public String key, value;
+		public int offset;
+
+		public Key(String k, String v, int o) {
+			key = k;
+			value = v;
+			offset = o;
 		}
 	}
 }
